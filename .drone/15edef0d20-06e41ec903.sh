@@ -15,7 +15,7 @@ echo '==================================> BEFORE_INSTALL'
 
 echo '==================================> INSTALL'
 
-export SELF=`basename $TRAVIS_BUILD_DIR`
+export SELF=`basename $DRONE_REPO`
 cd ..
 git clone -b $TRAVIS_BRANCH --depth 1 https://github.com/boostorg/boost.git boost-root
 cd boost-root
