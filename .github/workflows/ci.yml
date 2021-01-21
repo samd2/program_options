@@ -1,0 +1,242 @@
+name: Github Actions CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - develop
+      - githubactions*
+      - feature/**
+      - fix/**
+      - pr/**
+
+
+env:
+    B2_VARIANT: variant=release,debug
+
+jobs:
+  posix:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "COMMENT=C++03 TOOLSET=gcc,gcc-7 Job 0"
+            buildtype: "boost"
+            packages: "g++-7"
+            packages_to_remove: ""
+            os: "ubuntu-16.04"
+            cxx: "g++"
+            sources: ""
+            llvm_os: ""
+            llvm_ver: ""
+            comment: "C++03"
+            toolset: "gcc,gcc-7"
+            drone_job_uuid: "b6589fc6ab"
+          - name: "COMMENT=C++11 TOOLSET=clang CXXSTD=11 Job 1"
+            buildtype: "boost"
+            packages: "g++-7"
+            packages_to_remove: ""
+            os: "ubuntu-16.04"
+            cxx: "clang++"
+            sources: ""
+            llvm_os: ""
+            llvm_ver: ""
+            comment: "C++11"
+            toolset: "clang"
+            cxxstd: "11"
+            drone_job_uuid: "356a192b79"
+          - name: "COMMENT=valgrind TOOLSET=clang B2_VARIANT=var Job 2"
+            buildtype: "boost"
+            packages: "clang-5.0 libstdc++-7-dev valgrind"
+            packages_to_remove: ""
+            os: "ubuntu-16.04"
+            cxx: "clang++"
+            sources: ""
+            llvm_os: "trusty"
+            llvm_ver: "5.0"
+            comment: "valgrind"
+            toolset: "clang"
+            b2_variant: "variant=debug"
+            testflags: "testing.launcher=valgrind"
+            drone_job_uuid: "da4b9237ba"
+          - name: "COMMENT=cppcheck Job 3"
+            buildtype: "15edef0d20-06e41ec903"
+            packages: "binutils-gold gdb libc6-dbg"
+            packages_to_remove: ""
+            os: "ubuntu-16.04"
+            cxx: "g++"
+            sources: ""
+            llvm_os: ""
+            llvm_ver: ""
+            comment: "cppcheck"
+            drone_job_uuid: "77de68daec"
+          - name: "COMMENT=CodeCov TOOLSET=gcc-7 Job 4"
+            buildtype: "15edef0d20-35de83136e"
+            packages: "gcc-7 g++-7"
+            packages_to_remove: ""
+            os: "ubuntu-16.04"
+            cxx: "g++"
+            sources: ""
+            llvm_os: ""
+            llvm_ver: ""
+            comment: "CodeCov"
+            toolset: "gcc-7"
+            drone_job_uuid: "1b64538924"
+
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Check if running in container
+        if: matrix.container != ''
+        run: echo "GHA_CONTAINER=${{ matrix.container }}" >> $GITHUB_ENV
+      - name: boost
+        #if: ${{ matrix.buildtype }} == boost
+        if: matrix.buildtype == 'boost'
+        shell: bash
+        env:
+          TRAVIS_BRANCH: ${{ github.base_ref }}
+          CXX: ${{ matrix.cxx }}
+          SOURCES: ${{ matrix.sources }}
+          LLVM_OS: ${{ matrix.llvm_os }}
+          LLVM_VER: ${{ matrix.llvm_ver }}
+          PACKAGES: ${{ matrix.packages }}
+          PACKAGES_TO_REMOVE: ${{ matrix.packages_to_remove }}
+          COMMENT: ${{ matrix.comment }}
+          TOOLSET: ${{ matrix.toolset }}
+          DRONE_JOB_UUID: ${{ matrix.drone_job_uuid }}
+          CXXSTD: ${{ matrix.cxxstd }}
+          B2_VARIANT: ${{ matrix.b2_variant }}
+          TESTFLAGS: ${{ matrix.testflags }}
+        run: |
+          echo '==================================> SETUP'
+          BOOST_CI_ORG=boostorg BOOST_CI_BRANCH=master && wget https://github.com/$BOOST_CI_ORG/boost-ci/archive/$BOOST_CI_BRANCH.tar.gz && tar -xvf $BOOST_CI_BRANCH.tar.gz && mkdir -p .github &&  mv boost-ci-$BOOST_CI_BRANCH .github/boost-ci
+          echo '==================================> PACKAGES'
+          set -ex
+          echo "Before package removal or install"
+          whoami
+          dpkg -l
+          echo "Checking /usr/local"
+          ls -al /usr/local
+          echo "Checking clang"
+          which clang++ || true
+          clang++ --version || true
+          ls -al /etc/alternatives
+          ls -al /usr/bin/c*
+          echo "about to run sudo apt-get purge -y $PACKAGES_TO_REMOVE"
+          if [ -n "$PACKAGES_TO_REMOVE" ]; then sudo apt-get purge -y $PACKAGES_TO_REMOVE; fi
+          echo "about to run linux-cxx-install.sh"
+          ./.github/boost-ci/ci/drone/linux-cxx-install.sh
+          echo "After package removal and install"
+          dpkg -l
+          echo "Checking /usr/local"
+          ls -al /usr/local
+          echo "Checking clang"
+          which clang++ || true
+          clang++ --version || true
+          ls -al /etc/alternatives
+          ls -al /usr/bin/c*
+          echo '==================================> INSTALL AND COMPILE'
+          . .github/scripts/boost.sh
+       
+      - name: 15edef0d20-06e41ec903
+        #if: ${{ matrix.buildtype }} == 15edef0d20-06e41ec903
+        if: matrix.buildtype == '15edef0d20-06e41ec903'
+        shell: bash
+        env:
+          TRAVIS_BRANCH: ${{ github.base_ref }}
+          CXX: ${{ matrix.cxx }}
+          SOURCES: ${{ matrix.sources }}
+          LLVM_OS: ${{ matrix.llvm_os }}
+          LLVM_VER: ${{ matrix.llvm_ver }}
+          PACKAGES: ${{ matrix.packages }}
+          PACKAGES_TO_REMOVE: ${{ matrix.packages_to_remove }}
+          COMMENT: ${{ matrix.comment }}
+          TOOLSET: ${{ matrix.toolset }}
+          DRONE_JOB_UUID: ${{ matrix.drone_job_uuid }}
+          CXXSTD: ${{ matrix.cxxstd }}
+          B2_VARIANT: ${{ matrix.b2_variant }}
+          TESTFLAGS: ${{ matrix.testflags }}
+        run: |
+          echo '==================================> SETUP'
+          BOOST_CI_ORG=boostorg BOOST_CI_BRANCH=master && wget https://github.com/$BOOST_CI_ORG/boost-ci/archive/$BOOST_CI_BRANCH.tar.gz && tar -xvf $BOOST_CI_BRANCH.tar.gz && mkdir -p .github &&  mv boost-ci-$BOOST_CI_BRANCH .github/boost-ci
+          echo '==================================> PACKAGES'
+          set -ex
+          echo "Before package removal or install"
+          whoami
+          dpkg -l
+          echo "Checking /usr/local"
+          ls -al /usr/local
+          echo "Checking clang"
+          which clang++ || true
+          clang++ --version || true
+          ls -al /etc/alternatives
+          ls -al /usr/bin/c*
+          echo "about to run sudo apt-get purge -y $PACKAGES_TO_REMOVE"
+          if [ -n "$PACKAGES_TO_REMOVE" ]; then sudo apt-get purge -y $PACKAGES_TO_REMOVE; fi
+          echo "about to run linux-cxx-install.sh"
+          ./.github/boost-ci/ci/drone/linux-cxx-install.sh
+          echo "After package removal and install"
+          dpkg -l
+          echo "Checking /usr/local"
+          ls -al /usr/local
+          echo "Checking clang"
+          which clang++ || true
+          clang++ --version || true
+          ls -al /etc/alternatives
+          ls -al /usr/bin/c*
+          echo '==================================> INSTALL AND COMPILE'
+          . .github/scripts/15edef0d20-06e41ec903.sh
+       
+      - name: 15edef0d20-35de83136e
+        #if: ${{ matrix.buildtype }} == 15edef0d20-35de83136e
+        if: matrix.buildtype == '15edef0d20-35de83136e'
+        shell: bash
+        env:
+          TRAVIS_BRANCH: ${{ github.base_ref }}
+          CXX: ${{ matrix.cxx }}
+          SOURCES: ${{ matrix.sources }}
+          LLVM_OS: ${{ matrix.llvm_os }}
+          LLVM_VER: ${{ matrix.llvm_ver }}
+          PACKAGES: ${{ matrix.packages }}
+          PACKAGES_TO_REMOVE: ${{ matrix.packages_to_remove }}
+          COMMENT: ${{ matrix.comment }}
+          TOOLSET: ${{ matrix.toolset }}
+          DRONE_JOB_UUID: ${{ matrix.drone_job_uuid }}
+          CXXSTD: ${{ matrix.cxxstd }}
+          B2_VARIANT: ${{ matrix.b2_variant }}
+          TESTFLAGS: ${{ matrix.testflags }}
+        run: |
+          echo '==================================> SETUP'
+          BOOST_CI_ORG=boostorg BOOST_CI_BRANCH=master && wget https://github.com/$BOOST_CI_ORG/boost-ci/archive/$BOOST_CI_BRANCH.tar.gz && tar -xvf $BOOST_CI_BRANCH.tar.gz && mkdir -p .github &&  mv boost-ci-$BOOST_CI_BRANCH .github/boost-ci
+          echo '==================================> PACKAGES'
+          set -ex
+          echo "Before package removal or install"
+          whoami
+          dpkg -l
+          echo "Checking /usr/local"
+          ls -al /usr/local
+          echo "Checking clang"
+          which clang++ || true
+          clang++ --version || true
+          ls -al /etc/alternatives
+          ls -al /usr/bin/c*
+          echo "about to run sudo apt-get purge -y $PACKAGES_TO_REMOVE"
+          if [ -n "$PACKAGES_TO_REMOVE" ]; then sudo apt-get purge -y $PACKAGES_TO_REMOVE; fi
+          echo "about to run linux-cxx-install.sh"
+          ./.github/boost-ci/ci/drone/linux-cxx-install.sh
+          echo "After package removal and install"
+          dpkg -l
+          echo "Checking /usr/local"
+          ls -al /usr/local
+          echo "Checking clang"
+          which clang++ || true
+          clang++ --version || true
+          ls -al /etc/alternatives
+          ls -al /usr/bin/c*
+          echo '==================================> INSTALL AND COMPILE'
+          . .github/scripts/15edef0d20-35de83136e.sh
+       
+
